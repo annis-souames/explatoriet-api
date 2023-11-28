@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.models import Response
+from fastapi.responses import FileResponse, StreamingResponse
 
 # from models import Question
 from agent import Agent
@@ -61,7 +62,10 @@ def gen_answer(
         answer = agent.full_pipeline(file_path)
 
         # Return the transcription as JSON
-        return JSONResponse(content={"answer": answer})
+        return FileResponse(
+            "output/output.mp3",
+            media_type="audio/mp3",
+        )
 
     except Exception as e:
         # Handle exceptions
