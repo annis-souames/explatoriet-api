@@ -29,7 +29,7 @@ class Agent:
         answers = self.ask_gpt(transc.text)
         ans_text = answers.choices[0].message.content
         ans_audio = self.tts(ans_text)
-        print(ans_audio)
+        # print(ans_audio)
         # print(answers)
         return ans_audio
 
