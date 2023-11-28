@@ -1,9 +1,10 @@
-from typing import Union
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from typing import Union, Annotated
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.models import Response
-from whisper import WhisperTranscriber
+from models import Question
+from agent import Agent
 
 
 app = FastAPI()
@@ -19,14 +20,18 @@ app.add_middleware(
 )
 
 
-@app.post("/answer")
-def generate_answer(file: UploadFile):
+@app.post("/transcribe")
+def transcribe(
+    file: Annotated[UploadFile, File()],
+    lang: Annotated[str, Form()],
+):
     try:
+        # file = q.file
         # Save the uploaded audio file locally
         file_path = f"temp/{file.filename}"
         with open(file_path, "wb") as audio_file:
             audio_file.write(file.file.read())
-        transcriber = WhisperTranscriber()
+        transcriber = Agent(lang=lang)
         # Transcribe the audio using faster-whisper
         transcription = transcriber.transcribe(file_path)
 
@@ -40,6 +45,25 @@ def generate_answer(file: UploadFile):
         )
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+@app.post("/answer")
+def gen_answer(
+    file: Annotated[UploadFile, File()],
+    lang: Annotated[str, Form()],
+):
+    try:
+        # Save the uploaded audio file locally
+        file_path = f"temp/{file.filename}"
+        with open(file_path, "wb") as audio_file:
+            audio_file.write(file.file.read())
+        agent = Agent(lang=lang)
+        # Transcribe the audio using faster-whisper
+        answer = agent.full_pipeline(file_path)
+
+        # Return the transcription as JSON
+        return JSONResponse(content={"answer": answer})
+
+    except Exception as e:
+        # Handle exceptions
+        return HTTPException(
+            status_code=500, detail=f"Error processing audio: {str(e)}"
+        )
