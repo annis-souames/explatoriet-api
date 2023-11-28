@@ -51,13 +51,16 @@ def transcribe(
 def gen_answer(
     file: Annotated[UploadFile, File()],
     lang: Annotated[str, Form()],
+    grp: Annotated[str, Form()] = None,
 ):
     try:
         # Save the uploaded audio file locally
         file_path = f"temp/{file.filename}"
         with open(file_path, "wb") as audio_file:
             audio_file.write(file.file.read())
-        agent = Agent(lang=lang)
+        if grp is None:
+            grp = "default"
+        agent = Agent(lang=lang, grp=grp)
         # Transcribe the audio using faster-whisper
         answer = agent.full_pipeline(file_path)
 

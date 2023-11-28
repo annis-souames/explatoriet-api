@@ -19,7 +19,7 @@ client = OpenAI(api_key=env["openai"])
 class Agent:
     def __init__(self, lang="en", grp="default") -> None:
         self.language = lang
-        self.grp = "mid"
+        self.grp = grp
 
     def transcribe(self, audio_file: str) -> str:
         transc = self.whisper(audio_file)
@@ -78,6 +78,7 @@ class Agent:
     def tts(self, text):
         model = "eleven_turbo_v2" if self.language == "en" else "eleven_multilingual_v2"
         actor = env["voices"][self.grp]
+        print(actor)
         audio = generate(
             text=text,
             voice=actor,
