@@ -2,7 +2,8 @@ from faster_whisper import WhisperModel
 import json
 import requests
 from pydub import AudioSegment
-import io
+import av
+import time
 from elevenlabs import generate, play, save
 
 from openai import OpenAI
@@ -25,13 +26,26 @@ class Agent:
         return transc.text
 
     def full_pipeline(self, audio_file: str) -> str:
-        transc = self.whisper(audio_file)
+        start_time = time.time()
+        self.convert_to_mp3(audio_file, "input.mp3")
+        conv_time = time.time() - start_time
+        print(f"Conversion time: {conv_time} seconds")
+
+        start_time = time.time()
+        transc = self.whisper("input.mp3")
+        whisper_time = time.time() - start_time
+        print(f"Whisper time: {whisper_time} seconds")
+
+        start_time = time.time()
         answers = self.ask_gpt(transc.text)
+        gpt_time = time.time() - start_time
+        print(f"GPT time: {gpt_time} seconds")
+
+        start_time = time.time()
         ans_text = answers.choices[0].message.content
         ans_audio = self.tts(ans_text)
-        # print(ans_audio)
-        # print(answers)
-        return ans_audio
+        tts_time = time.time() - start_time
+        print(f"TTS time: {tts_time} seconds")
 
     def ask_gpt(self, prompt):
         prompt_sys = (
@@ -62,20 +76,33 @@ class Agent:
 
     # TTS for elv
     def tts(self, text):
+        model = "eleven_turbo_v2" if self.language == "en" else "eleven_multilingual_v2"
         actor = env["voices"][self.grp]
         audio = generate(
             text=text,
             voice=actor,
             api_key=env["elv"],
-            model="eleven_multilingual_v2",
+            model=model,
         )
         save(audio, "output/output.mp3")
 
         return audio
 
-    def convert_webm_to_mp3(webm_file_path, mp3_file_path):
+    def convert_to_mp3(self, webm_file_path, mp3_file_path):
         try:
-            print(f"Conversion successful: {mp3_file_path}")
+            with av.open(webm_file_path, "r") as inp:
+                # f = SpooledTemporaryFile(mode="w+b")
+                f = mp3_file_path
+                with av.open(
+                    f, "w", format="mp3"
+                ) as out:  # Open file, setting format to mp3
+                    out_stream = out.add_stream("mp3")
+                    for frame in inp.decode(audio=0):
+                        frame.pts = None
+                        for packets in out_stream.encode(frame):
+                            out.mux(packets)
+                    for packets in out_stream.encode(None):
+                        out.mux(packets)
 
         except Exception as e:
             print(f"Error during conversion: {str(e)}")
